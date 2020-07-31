@@ -1,0 +1,64 @@
+<html>
+
+
+<head>
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <style>
+        table {
+          font-size: 12px;
+        }
+        .container {
+            width: 65%;
+            margin-top: 55px;
+        }
+    </style>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <title>Covid Articles Report</title>
+  </head>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="row">
+        <div class="col-md-12">
+
+        <h3>Covid Articles Report</h3>
+
+        <table class="table table-sm table-condensed table-striped">
+            <thead class="thead-dark">
+            <tr>
+                <th style="width: 20%">Cluster Size</th>
+                <th style="width: 80%">Titles</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for dict_item in values %}
+                <tr>
+                    <td>{{ dict_item['cluster_size'] }}</td>
+                    <td>
+                        <ul>
+                            {% for item in dict_item['titles'] %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+            </div>
+    </div>
+
+</div>
+
+</body>
+</html>

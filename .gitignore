@@ -1,0 +1,9 @@
+# Python stuff
+__pycache__/
+.mypy_cache/
+
+# IDE stuff
+.vscode
+
+# Project files
+report.html
