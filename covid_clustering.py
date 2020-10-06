@@ -16,9 +16,9 @@ def get_cluster_labels(embeddings: np.ndarray, method: str) -> np.ndarray:
             'hdbscan': _get_cluster_labels_hdbscan,
             'kmeans': _get_cluster_labels_kmeans
         }
-        function = methods[method]
+        function = methods[method.lower()]
     except KeyError as key:
-        raise KeyError(f"Invalid method name: {key}! Available methods are: {tuple(methods.keys())}")
+        raise KeyError(f"Invalid clustering method name: {key}! Available methods are: {tuple(methods.keys())}")
     return function(embeddings)
 
 

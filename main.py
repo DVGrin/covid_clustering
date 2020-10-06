@@ -8,10 +8,10 @@ from collections import Counter
 from summarizer import Summarizer
 from rake_nltk import Rake, Metric
 from sklearn.decomposition import PCA
-from sentence_transformers import SentenceTransformer
 from jinja2 import Environment, FileSystemLoader
 from transformers import AutoModel, AutoTokenizer, AutoConfig
 
+from covid_encoding import encode_texts
 from covid_clustering import get_cluster_labels
 
 
@@ -20,14 +20,14 @@ def main():
     texts = list(article_data["content"].values)
     texts = get_summary(texts)
 
-    embeddings = encode_texts(texts)
+    embeddings = encode_texts(texts, 'roberta')
     embeddings = dimensionality_reduction(embeddings)
 
     cluster_labels = get_cluster_labels(embeddings, method='hdbscan')
     print(Counter(cluster_labels))
+
     article_data["cluster_label"] = cluster_labels
     article_data_clustered = article_data.groupby("cluster_label").apply(dataframe_regroup)
-
     generate_html_report(article_data_clustered, "report.html")
 
 
@@ -47,13 +47,7 @@ def get_summary(texts: List[str]) -> List[str]:
     return result
 
 
-def encode_texts(texts: List[str]) -> List[np.ndarray]:
-    model = SentenceTransformer('roberta-base-nli-stsb-mean-tokens')
-    sentence_embeddings = model.encode(texts)
-    return sentence_embeddings
-
-
-def dimensionality_reduction(embeddings: List[np.ndarray]) -> np.ndarray:
+def dimensionality_reduction(embeddings: np.ndarray) -> np.ndarray:
     pca = PCA()
     result = pca.fit_transform(embeddings)
     print(f"Dimensions: {len(embeddings)}x{len(embeddings[0])} -> {result.shape[0]}x{result.shape[1]}")
