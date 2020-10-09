@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+import multiprocessing
 
 from typing import List, Dict, Union
 
@@ -8,7 +9,9 @@ from tqdm import tqdm
 from summarizer import Summarizer
 from rake_nltk import Rake, Metric
 from sklearn.decomposition import PCA
+from nltk.tokenize import word_tokenize
 from jinja2 import Environment, FileSystemLoader
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from transformers import AutoModel, AutoTokenizer, AutoConfig
 
 from covid_encoding import encode_texts
@@ -20,17 +23,22 @@ from covid_clustering import get_cluster_labels
 VERBOSE = True
 USE_SUMMARY = False
 N_SAMPLES = 1000  # int or None
+ENCODING_METHOD = 'doc2vec'
+INPUT_FILE = "../datasets/covid_articles/covid19_articles.csv"
+TRAIN_NEW_MODEL = False
 
 
 def main():
-    article_data = open_csv_file("../datasets/covid_articles/covid19_articles.csv", n_samples=N_SAMPLES, verbose=VERBOSE)
+    if ENCODING_METHOD == 'doc2vec' and TRAIN_NEW_MODEL:
+        train_doc2vec_model(INPUT_FILE, verbose=VERBOSE)
+    article_data = open_csv_file(INPUT_FILE, n_samples=N_SAMPLES, verbose=VERBOSE)
     texts = list(article_data["content"].to_numpy())
     if USE_SUMMARY:
         texts = get_summary(texts, verbose=VERBOSE)
 
     texts = clean_text(texts, verbose=VERBOSE)
-    embeddings = encode_texts(texts, 'tfidf', verbose=VERBOSE)
-    embeddings = dimensionality_reduction(embeddings)
+    embeddings = encode_texts(texts, ENCODING_METHOD, verbose=VERBOSE)
+    embeddings = dimensionality_reduction(embeddings, 300)
 
     cluster_labels = get_cluster_labels(embeddings, method='hdbscan')
     if VERBOSE:
@@ -53,6 +61,43 @@ def open_csv_file(path: str, *, n_samples: Union[None, int] = None, verbose: boo
     return dataframe
 
 
+def train_doc2vec_model(file_path: str, verbose: bool = False) -> None:
+    article_data = open_csv_file(INPUT_FILE, n_samples=None, verbose=False)
+    if verbose:
+        print(f"Opened file for doc2vec model training, Length: {article_data.shape[0]}")
+    texts = list(article_data["content"].to_numpy())
+    model = Doc2Vec(size=300,
+                    alpha=0.025,
+                    min_alpha=0.00025,
+                    min_count=1,
+                    dm=1,
+                    workers=multiprocessing.cpu_count())
+
+    if verbose:
+        print("Started data tagging")
+        texts = tqdm(texts)
+    tagged_data = [TaggedDocument(words=word_tokenize(_d), tags=[str(i)]) for i, _d in enumerate(texts)]
+    if verbose:
+        print("Started building the vocabulary")
+    model.build_vocab(tagged_data)
+
+    epoch_iter = range(100)
+    if verbose:
+        print("Doc2Vec model training started:")
+        epoch_iter = tqdm(range(100))
+    for epoch in epoch_iter:
+        model.train(tagged_data,
+                    total_examples=model.corpus_count,
+                    epochs=model.epochs)
+        # Decrease the learning rate
+        model.alpha -= 0.0002
+        # Fix the learning rate, no decay
+        model.min_alpha = model.alpha
+
+    model.save("doc2vec.model")
+    return model
+
+
 def get_summary(texts: List[str], *, verbose: bool = False) -> List[str]:
     config = AutoConfig.from_pretrained('allenai/biomed_roberta_base')
     config.output_hidden_states = True
@@ -66,8 +111,7 @@ def get_summary(texts: List[str], *, verbose: bool = False) -> List[str]:
     return result
 
 
-def dimensionality_reduction(embeddings: np.ndarray) -> np.ndarray:
-    max_pca_components = 768
+def dimensionality_reduction(embeddings: np.ndarray, max_pca_components=300) -> np.ndarray:
     pca = PCA(n_components=(min(N_SAMPLES or max_pca_components, max_pca_components)))
     result = pca.fit_transform(embeddings)
     print(f"Dimensions: {len(embeddings)}x{len(embeddings[0])} -> {result.shape[0]}x{result.shape[1]}")
