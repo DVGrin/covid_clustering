@@ -12,6 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 from transformers import AutoModel, AutoTokenizer, AutoConfig
 
 from covid_encoding import encode_texts
+from covid_preprocessing import clean_text
 from covid_clustering import get_cluster_labels
 
 
@@ -27,7 +28,8 @@ def main():
     if USE_SUMMARY:
         texts = get_summary(texts, verbose=VERBOSE)
 
-    embeddings = encode_texts(texts, 'roberta', verbose=VERBOSE)
+    texts = clean_text(texts, verbose=VERBOSE)
+    embeddings = encode_texts(texts, 'tfidf', verbose=VERBOSE)
     embeddings = dimensionality_reduction(embeddings)
 
     cluster_labels = get_cluster_labels(embeddings, method='hdbscan')
