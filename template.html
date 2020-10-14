@@ -36,8 +36,9 @@
         <table class="table table-sm table-condensed table-striped">
             <thead class="thead-dark">
             <tr>
-                <th style="width: 20%">Cluster Size</th>
-                <th style="width: 80%">Titles</th>
+                <th style="width: 15%">Cluster Size</th>
+                <th style="width: 60%">Titles</th>
+                <th style="width: 25%">Common Phrases</th>
             </tr>
             </thead>
             <tbody>
@@ -47,6 +48,13 @@
                     <td>
                         <ul>
                             {% for item in dict_item['titles'] %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                    <td>
+                        <ul>
+                            {% for item in dict_item['common_phrases'] %}
                             <li>{{ item }}</li>
                             {% endfor %}
                         </ul>

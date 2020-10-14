@@ -7,7 +7,6 @@ from typing import List, Dict, Union
 
 from tqdm import tqdm
 from summarizer import Summarizer
-from rake_nltk import Rake, Metric
 from sklearn.decomposition import PCA
 from nltk.tokenize import word_tokenize
 from jinja2 import Environment, FileSystemLoader
@@ -17,6 +16,7 @@ from transformers import AutoModel, AutoTokenizer, AutoConfig
 from covid_encoding import encode_texts
 from covid_preprocessing import clean_text
 from covid_clustering import get_cluster_labels
+from covid_keywords import extract_common_phrases
 
 
 # Parameters
@@ -37,6 +37,7 @@ def main():
         texts = get_summary(texts, verbose=VERBOSE)
 
     texts = clean_text(texts, verbose=VERBOSE)
+    article_data['filtered_content'] = texts
     embeddings = encode_texts(texts, ENCODING_METHOD, verbose=VERBOSE)
     embeddings = dimensionality_reduction(embeddings, 300)
 
@@ -45,6 +46,8 @@ def main():
         print("Clustering finished")
 
     article_data["cluster_label"] = cluster_labels
+    if VERBOSE:
+        print("Keyword extraction started")
     article_data_clustered = article_data.groupby("cluster_label").apply(dataframe_regroup)
     generate_html_report(article_data_clustered, "report.html")
 
@@ -114,25 +117,20 @@ def get_summary(texts: List[str], *, verbose: bool = False) -> List[str]:
 def dimensionality_reduction(embeddings: np.ndarray, max_pca_components=300) -> np.ndarray:
     pca = PCA(n_components=(min(N_SAMPLES or max_pca_components, max_pca_components)))
     result = pca.fit_transform(embeddings)
-    print(f"Dimensions: {len(embeddings)}x{len(embeddings[0])} -> {result.shape[0]}x{result.shape[1]}")
+    if len(embeddings[0]) != result.shape[1]:
+        print(f"Dimensions: {len(embeddings)}x{len(embeddings[0])} -> {result.shape[0]}x{result.shape[1]}")
     return pca.fit_transform(embeddings)
 
 
 def dataframe_regroup(dataframe: pd.DataFrame) -> Dict:
-    # text = '.\n'.join(dataframe["content"])
+    text = '.\n'.join(dataframe["filtered_content"])
     titles = dataframe['title'].values
     size = dataframe.shape[0]
-    # common_phrases = extract_common_phrases(text)[:10]
+    common_phrases = extract_common_phrases(text, 'yake', verbose=VERBOSE)[:10]
 
     return pd.Series({'titles': titles,
-                      'cluster_size': size})
-    #   'common_phrases': common_phrases})
-
-
-def extract_common_phrases(text: str) -> List[str]:
-    r = Rake(min_length=2, max_length=5, ranking_metric=Metric.WORD_FREQUENCY)
-    r.extract_keywords_from_text(text)
-    return r.get_ranked_phrases()
+                      'cluster_size': size,
+                      'common_phrases': common_phrases})
 
 
 def generate_html_report(dataframe: pd.DataFrame, output_file: str) -> None:
@@ -140,7 +138,7 @@ def generate_html_report(dataframe: pd.DataFrame, output_file: str) -> None:
     template = env.get_template("template.html")
     original_list = dataframe.to_dict('records')
     new_list = [{key: values for key, values in record.items()
-                 if key in ['cluster_size', 'titles']}
+                 if key in ['cluster_size', 'titles', 'common_phrases']}
                 for record in original_list]
     template_vars = {"values": new_list}
     html_out = template.render(template_vars)
