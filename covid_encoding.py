@@ -43,7 +43,7 @@ def train_doc2vec_model(file_path: str, verbose: bool = False) -> None:
         print("Started building the vocabulary")
     model.build_vocab(tagged_data)
 
-    epoch_iter = range(20)w
+    epoch_iter = range(20)
     if verbose:
         print("Doc2Vec model training started:")
         epoch_iter = tqdm(epoch_iter)

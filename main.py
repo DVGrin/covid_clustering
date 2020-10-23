@@ -38,14 +38,13 @@ def main():
     embeddings = encode_texts(texts, ENCODING_METHOD, verbose=VERBOSE)
     embeddings = dimensionality_reduction(embeddings, 300)
 
-    cluster_labels = get_cluster_labels(embeddings, method='hdbscan')
-    if VERBOSE:
-        print("Clustering finished")
-
+    cluster_labels = get_cluster_labels(embeddings, method='hierarchical')
     article_data["cluster_label"] = cluster_labels
+
     if VERBOSE:
-        print("Keyword extraction started")
+        print("Clustering finished\nKeyword extraction started")
     article_data_clustered = article_data.groupby("cluster_label").apply(dataframe_regroup)
+    article_data_clustered = article_data_clustered.sort_values(by=['cluster_size'], ascending=False)
     generate_html_report(article_data_clustered, "report.html")
 
 

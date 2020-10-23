@@ -1,10 +1,11 @@
 import hdbscan
+import multiprocessing
 import numpy as np
 
 from math import sqrt
 
 from kneed import KneeLocator
-from sklearn.cluster import DBSCAN, MiniBatchKMeans
+from sklearn.cluster import DBSCAN, OPTICS, MiniBatchKMeans, AgglomerativeClustering
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics.pairwise import pairwise_distances
 
@@ -14,7 +15,9 @@ def get_cluster_labels(embeddings: np.ndarray, method: str) -> np.ndarray:
         methods = {
             'dbscan': _get_cluster_labels_dbscan,
             'hdbscan': _get_cluster_labels_hdbscan,
-            'kmeans': _get_cluster_labels_kmeans
+            'kmeans': _get_cluster_labels_kmeans,
+            'optics': _get_cluster_labels_optics,
+            'hierarchical': _get_cluster_labels_hierarchical
         }
         function = methods[method.lower()]
     except KeyError as key:
@@ -54,6 +57,22 @@ def _get_cluster_labels_dbscan(embeddings: np.ndarray) -> np.ndarray:
 
 
 def _get_cluster_labels_kmeans(embeddings: np.ndarray) -> np.ndarray:
-    model = MiniBatchKMeans(n_clusters=50)
+    model = MiniBatchKMeans(n_clusters=30)
     cluster_labels = model.fit_predict(embeddings)
+    return cluster_labels
+
+
+def _get_cluster_labels_optics(embeddings: np.ndarray) -> np.ndarray:
+    cluster_labels = OPTICS(min_samples=2,
+                            n_jobs=multiprocessing.cpu_count()) \
+        .fit_predict(embeddings)
+    return cluster_labels
+
+
+def _get_cluster_labels_hierarchical(embeddings: np.ndarray) -> np.ndarray:
+    cluster_labels = AgglomerativeClustering(n_clusters=None,
+                                             affinity='cosine',
+                                             linkage='average',
+                                             distance_threshold=0.5) \
+        .fit_predict(embeddings)
     return cluster_labels
