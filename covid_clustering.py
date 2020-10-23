@@ -28,7 +28,7 @@ def find_epsilon(embeddings: np.ndarray) -> float:
     distances, _ = nbrs.kneighbors(embeddings)
     distances = [np.mean(d) for d in np.sort(distances, axis=0)]
     kneedle = KneeLocator(distances, list(range(len(distances))), online=True)
-    epsilon = np.mean(list(kneedle.all_elbows))
+    epsilon = np.min(list(kneedle.all_elbows))
     if epsilon == 0.0:
         epsilon = np.mean(distances)
     return float(epsilon)
@@ -54,6 +54,6 @@ def _get_cluster_labels_dbscan(embeddings: np.ndarray) -> np.ndarray:
 
 
 def _get_cluster_labels_kmeans(embeddings: np.ndarray) -> np.ndarray:
-    model = MiniBatchKMeans(n_clusters=5)
+    model = MiniBatchKMeans(n_clusters=50)
     cluster_labels = model.fit_predict(embeddings)
     return cluster_labels

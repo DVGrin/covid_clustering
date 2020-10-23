@@ -1,19 +1,16 @@
 import os
 import numpy as np
 import pandas as pd
-import multiprocessing
 
 from typing import List, Dict, Union
 
 from tqdm import tqdm
 from summarizer import Summarizer
 from sklearn.decomposition import PCA
-from nltk.tokenize import word_tokenize
 from jinja2 import Environment, FileSystemLoader
-from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from transformers import AutoModel, AutoTokenizer, AutoConfig
 
-from covid_encoding import encode_texts
+from covid_encoding import encode_texts, train_doc2vec_model
 from covid_preprocessing import clean_text
 from covid_clustering import get_cluster_labels
 from covid_keywords import extract_common_phrases
@@ -64,43 +61,6 @@ def open_csv_file(path: str, *, n_samples: Union[None, int] = None, verbose: boo
     return dataframe
 
 
-def train_doc2vec_model(file_path: str, verbose: bool = False) -> None:
-    article_data = open_csv_file(INPUT_FILE, n_samples=None, verbose=False)
-    if verbose:
-        print(f"Opened file for doc2vec model training, Length: {article_data.shape[0]}")
-    texts = list(article_data["content"].to_numpy())
-    model = Doc2Vec(size=300,
-                    alpha=0.025,
-                    min_alpha=0.00025,
-                    min_count=1,
-                    dm=1,
-                    workers=multiprocessing.cpu_count())
-
-    if verbose:
-        print("Started data tagging")
-        texts = tqdm(texts)
-    tagged_data = [TaggedDocument(words=word_tokenize(_d), tags=[str(i)]) for i, _d in enumerate(texts)]
-    if verbose:
-        print("Started building the vocabulary")
-    model.build_vocab(tagged_data)
-
-    epoch_iter = range(100)
-    if verbose:
-        print("Doc2Vec model training started:")
-        epoch_iter = tqdm(range(100))
-    for epoch in epoch_iter:
-        model.train(tagged_data,
-                    total_examples=model.corpus_count,
-                    epochs=model.epochs)
-        # Decrease the learning rate
-        model.alpha -= 0.0002
-        # Fix the learning rate, no decay
-        model.min_alpha = model.alpha
-
-    model.save("doc2vec.model")
-    return model
-
-
 def get_summary(texts: List[str], *, verbose: bool = False) -> List[str]:
     config = AutoConfig.from_pretrained('allenai/biomed_roberta_base')
     config.output_hidden_states = True
@@ -126,7 +86,7 @@ def dataframe_regroup(dataframe: pd.DataFrame) -> Dict:
     text = '.\n'.join(dataframe["filtered_content"])
     titles = dataframe['title'].values
     size = dataframe.shape[0]
-    common_phrases = extract_common_phrases(text, 'yake', verbose=VERBOSE)[:10]
+    common_phrases = extract_common_phrases(text, 'yake', verbose=VERBOSE)[:30]
 
     return pd.Series({'titles': titles,
                       'cluster_size': size,
