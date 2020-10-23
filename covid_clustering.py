@@ -1,5 +1,4 @@
 import hdbscan
-import multiprocessing
 import numpy as np
 
 from math import sqrt
@@ -64,7 +63,8 @@ def _get_cluster_labels_kmeans(embeddings: np.ndarray) -> np.ndarray:
 
 def _get_cluster_labels_optics(embeddings: np.ndarray) -> np.ndarray:
     cluster_labels = OPTICS(min_samples=2,
-                            n_jobs=multiprocessing.cpu_count()) \
+                            metric='cosine',
+                            n_jobs=-1) \
         .fit_predict(embeddings)
     return cluster_labels
 

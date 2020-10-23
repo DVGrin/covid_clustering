@@ -1,4 +1,5 @@
 import os
+import warnings
 import numpy as np
 import pandas as pd
 
@@ -38,12 +39,17 @@ def main():
     embeddings = encode_texts(texts, ENCODING_METHOD, verbose=VERBOSE)
     embeddings = dimensionality_reduction(embeddings, 300)
 
-    cluster_labels = get_cluster_labels(embeddings, method='hierarchical')
+    cluster_labels = get_cluster_labels(embeddings, method='hdbscan')
     article_data["cluster_label"] = cluster_labels
 
     if VERBOSE:
         print("Clustering finished\nKeyword extraction started")
-    article_data_clustered = article_data.groupby("cluster_label").apply(dataframe_regroup)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(action="ignore", category=FutureWarning)
+            tqdm.pandas()
+        article_data_clustered = article_data.groupby("cluster_label").progress_apply(dataframe_regroup)
+    else:
+        article_data_clustered = article_data.groupby("cluster_label").apply(dataframe_regroup)
     article_data_clustered = article_data_clustered.sort_values(by=['cluster_size'], ascending=False)
     generate_html_report(article_data_clustered, "report.html")
 
@@ -82,10 +88,10 @@ def dimensionality_reduction(embeddings: np.ndarray, max_pca_components=300) -> 
 
 
 def dataframe_regroup(dataframe: pd.DataFrame) -> Dict:
-    text = '.\n'.join(dataframe["filtered_content"])
-    titles = dataframe['title'].values
+    titles = dataframe['title'].to_numpy()
     size = dataframe.shape[0]
-    common_phrases = extract_common_phrases(text, 'yake', verbose=VERBOSE)[:30]
+    texts = dataframe["filtered_content"].to_list()
+    common_phrases = extract_common_phrases(texts, 'lda', n_keywords=20)
 
     return pd.Series({'titles': titles,
                       'cluster_size': size,
