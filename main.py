@@ -22,7 +22,7 @@ INPUT_FILE = "../datasets/covid_articles/covid19_articles.csv"
 
 class ArticleClustering():
     def __init__(self, clustering_method: str = "hdbscan", encoding_method: str = "roberta",
-                 keyword_extraction_method: str = "yake", num_keywords: int = 20,
+                 keyword_extraction_method: str = "lda", num_keywords: int = 20,
                  verbose: bool = True, train_new_model: bool = False, use_summary: bool = False,
                  report_filename: str = "report.html"):
         self.clustering_method = clustering_method
@@ -45,7 +45,6 @@ class ArticleClustering():
 
         texts = clean_text(texts, verbose=self.verbose)
         article_data["filtered_content"] = texts
-        # print(texts[0])
         embeddings = encode_texts(texts, self.encoding_method, verbose=self.verbose)
         embeddings = self.dimensionality_reduction(embeddings, 300, verbose=self.verbose)
 
@@ -118,7 +117,7 @@ class ArticleClustering():
 
 
 def main():
-    pipeline = ArticleClustering(encoding_method="doc2vec")
+    pipeline = ArticleClustering(encoding_method="doc2vec", keyword_extraction_method="rake")
     pipeline.analyze(INPUT_FILE, 1000)
 
 

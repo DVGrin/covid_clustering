@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 from yake import KeywordExtractor
 from rake_nltk import Rake, Metric
@@ -20,14 +20,19 @@ def extract_common_phrases(articles: List[str], method: str, n_keywords: int) ->
 
 
 def _extract_common_phrases_rake(articles: List[str], n_keywords: int) -> List[str]:
-    text = '\n'.join(articles)
-    r = Rake(min_length=2, max_length=5, ranking_metric=Metric.WORD_FREQUENCY)
-    r.extract_keywords_from_text(text)
-    return r.get_ranked_phrases()[:n_keywords]
+    r = Rake(min_length=2, max_length=4, ranking_metric=Metric.WORD_FREQUENCY)
+    keywords: Dict[str, float] = {}
+    for article in articles:
+        r.extract_keywords_from_text(article)
+        article_keywords = dict([x[::-1] for x in r.get_ranked_phrases_with_scores()])
+        for keyword, weight in article_keywords.items():
+            keywords[keyword] = keywords.get(keyword, 0) + weight
+    keywords = {key: value for key, value in sorted(keywords.items(), key=lambda item: item[1], reverse=True)}
+    return list(keywords.keys())[:n_keywords]
 
 
 def _extract_common_phrases_yake(articles: List[str], n_keywords: int) -> List[str]:
-    text = '\n'.join(articles)
+    keywords: Dict[str, float] = {}
     custom_kw_extractor = KeywordExtractor(lan='en',
                                            n=3,
                                            dedupLim=0.9,
@@ -35,9 +40,14 @@ def _extract_common_phrases_yake(articles: List[str], n_keywords: int) -> List[s
                                            windowsSize=1,
                                            top=n_keywords,
                                            features=None)
-    keywords = custom_kw_extractor.extract_keywords(text)
 
-    return [keyword[1] for keyword in keywords]
+    for article in articles:
+        article_keywords = dict(custom_kw_extractor.extract_keywords(article))
+        for keyword, weight in article_keywords.items():
+            keywords[keyword] = keywords.get(keyword, 0) + weight
+    keywords = {key: value for key, value in sorted(keywords.items(), key=lambda item: item[1], reverse=True)}
+
+    return list(keywords.keys())[:n_keywords]
 
 
 def _extract_common_phrases_lda(articles: List[str], n_keywords: int) -> List[str]:
