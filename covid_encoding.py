@@ -23,7 +23,7 @@ def encode_texts(texts: List[str], method: str, *, verbose: bool = False) -> np.
     return function(texts, verbose)
 
 
-def train_doc2vec_model(file_path: str, verbose: bool = False) -> None:
+def train_doc2vec_model(file_path: str, verbose: bool = False, model_name: str = "doc2vec.model") -> Doc2Vec:
     article_data = pd.read_csv(file_path)
     if verbose:
         print(f"Opened file for doc2vec model training, Length: {article_data.shape[0]}")
@@ -56,7 +56,7 @@ def train_doc2vec_model(file_path: str, verbose: bool = False) -> None:
         # Fix the learning rate, no decay
         model.min_alpha = model.alpha
 
-    model.save("doc2vec.model")
+    model.save(model_name)
     return model
 
 

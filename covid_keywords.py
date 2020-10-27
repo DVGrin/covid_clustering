@@ -34,7 +34,7 @@ def _extract_common_phrases_rake(articles: List[str], n_keywords: int) -> List[s
 def _extract_common_phrases_yake(articles: List[str], n_keywords: int) -> List[str]:
     keywords: Dict[str, float] = {}
     custom_kw_extractor = KeywordExtractor(lan='en',
-                                           n=3,
+                                           n=4,
                                            dedupLim=0.9,
                                            dedupFunc='seqm',
                                            windowsSize=1,

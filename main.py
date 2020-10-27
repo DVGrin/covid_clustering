@@ -15,6 +15,7 @@ from covid_encoding import encode_texts, train_doc2vec_model
 from covid_preprocessing import clean_text
 from covid_clustering import get_cluster_labels
 from covid_keywords import extract_common_phrases
+from covid_visualisation import noninteractive_visualisation
 
 
 INPUT_FILE = "../datasets/covid_articles/covid19_articles.csv"
@@ -23,21 +24,22 @@ INPUT_FILE = "../datasets/covid_articles/covid19_articles.csv"
 class ArticleClustering():
     def __init__(self, clustering_method: str = "hdbscan", encoding_method: str = "roberta",
                  keyword_extraction_method: str = "lda", num_keywords: int = 20,
-                 verbose: bool = True, train_new_model: bool = False, use_summary: bool = False,
+                 verbose: bool = True, doc2vec_model: Union[None, str] = None, use_summary: bool = False,
                  report_filename: str = "report.html"):
         self.clustering_method = clustering_method
         self.encoding_method = encoding_method
         self.keyword_extraction_method = keyword_extraction_method
         self.num_keywords = num_keywords
         self.verbose = verbose
-        self.train_new_model = train_new_model
+        self.doc2vec_model = doc2vec_model
         self.use_summary = use_summary
         self.report_filename = report_filename
 
     def analyze(self, input_file: str, n_samples: Union[int, None] = None) -> None:
         self.n_samples = n_samples
-        if self.encoding_method == "doc2vec" and self.train_new_model:
-            train_doc2vec_model(input_file, verbose=self.verbose)
+        if self.encoding_method == "doc2vec" and not self.doc2vec_model:
+            print("No doc2vec model detected")
+            exit(1)
         article_data = self.open_csv_file(input_file, n_samples=n_samples, verbose=self.verbose)
         texts = list(article_data["content"].to_numpy())
         if self.use_summary:
@@ -50,6 +52,8 @@ class ArticleClustering():
 
         cluster_labels = get_cluster_labels(embeddings, method=self.clustering_method)
         article_data["cluster_label"] = cluster_labels
+
+        noninteractive_visualisation(embeddings, cluster_labels, verbose=self.verbose)
 
         if self.verbose:
             print("Clustering finished\nKeyword extraction started")
@@ -73,6 +77,10 @@ class ArticleClustering():
             else:
                 print(f"Articles dataset opened. Length: {dataframe.shape[0]}")
         return dataframe
+
+    def train_doc2vec_model(self, model_name: str, dataset_path: str) -> None:
+        train_doc2vec_model(dataset_path, self.verbose, model_name)
+        self.doc2vec_model = model_name
 
     def get_summary(self, texts: List[str]) -> List[str]:
         config = AutoConfig.from_pretrained('allenai/biomed_roberta_base')
@@ -117,7 +125,9 @@ class ArticleClustering():
 
 
 def main():
-    pipeline = ArticleClustering(encoding_method="doc2vec", keyword_extraction_method="rake")
+    pipeline = ArticleClustering(encoding_method="doc2vec",
+                                 doc2vec_model="doc2vec.model",
+                                 keyword_extraction_method="rake")
     pipeline.analyze(INPUT_FILE, 1000)
 
 
